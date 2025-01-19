@@ -1,5 +1,8 @@
 #include "systemcalls.h"
-
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -16,8 +19,26 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+    bool wRet=false;
+    int res=system(cmd);
+    if (res==-1)
+    {
+    	perror("Cmd execution failed");	
+    }
+    else
+    {
+    	if (WIFEXITED(res)) 
+        {
+            printf("Child process exited with status: %d\n", WEXITSTATUS(res));
+            wRet = true;
+        }else
+        {
+        	perror("Child process exited failing");	
+        }
+    
+    }
+    
+    return wRet;
 }
 
 /**
@@ -58,6 +79,37 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    int pid=fork();
+    if (pid ==-1)
+    {
+        perror("Error during fork");
+    	va_end(args);
+    	return false;
+    }
+    if (pid ==0)
+    {
+       
+    	execv(command[0], command);
+    	// ERROR
+    	//perror("execv");
+    	abort();
+    	
+    	
+    }
+    else
+    {
+    	int status;
+	if (waitpid(pid, &status, 0) == -1) 
+	{
+		perror("waitpid");
+		va_end(args);
+		return false;
+	}
+	va_end(args);
+	return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    }
+   
+    
 
     va_end(args);
 
@@ -92,6 +144,45 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+	int kidpid;
+	int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if (fd < 0)
+	{ 
+	   perror("opening"); 
+	   abort(); 
+	}
+	switch (kidpid = fork()) 
+	{
+  		case -1: 
+  			perror("fork"); 
+  			abort();
+  			break;
+  		case 0:
+	    		if (dup2(fd, 1) < 0) 
+		    	{
+		    	   perror("dup2"); 
+		    	   abort(); 
+		    	}
+    			close(fd);
+    			execv(command[0] , command); 
+    			perror("execv"); 
+    			abort();
+    			break;
+  		default:
+  			int status;
+			if (waitpid(kidpid, &status, 0) == -1) 
+			{
+				perror("waitpid");
+				va_end(args);
+				return false;
+			}
+			va_end(args);
+			close(fd);
+			return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+			break;
+    			
+    	
+	}
 
     va_end(args);
 
