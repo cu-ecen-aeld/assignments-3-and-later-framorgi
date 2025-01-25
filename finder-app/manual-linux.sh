@@ -11,10 +11,14 @@ KERNEL_VERSION=v5.15.163
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
-CROSS_COMPILE=/home/framorgi/arm-x-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+#CROSS_COMPILE=/home/framorgi/arm-x-compiler/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+CROSS_COMPILE=aarch64-none-linux-gnu-
 
 echo "-----------------------"
 echo "--- MANUAL_LINUX.SH ---"
+
+echo "PATH= $PATH"
+
 if [ $# -lt 1 ]
 then
 	echo "Using default directory ${OUTDIR} for output"
@@ -28,6 +32,7 @@ mkdir -p ${OUTDIR}
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/linux-stable" ]; then
     #Clone only if the repository does not exist.
+        echo "ERROR - ${OUTDIR}/linux-stable NOT EXISTS"
 	echo "CLONING GIT LINUX STABLE VERSION ${KERNEL_VERSION} IN ${OUTDIR}"
 	git clone ${KERNEL_REPO} --depth 1 --single-branch --branch ${KERNEL_VERSION}
 	echo "-----------------------"
@@ -35,6 +40,7 @@ if [ ! -d "${OUTDIR}/linux-stable" ]; then
 fi
 if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     cd linux-stable
+    echo "ERROR - ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image  NOT EXISTS"
     echo "-------------------------"
     echo "--- CHECK OUT VERSION ---"
     echo "Checking out version ${KERNEL_VERSION}"
@@ -47,6 +53,8 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     echo "-------------------"
     echo "--- KERNEL MAKE ---"
     echo "KERNEL MAKE mrproper:  make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE mrproper"
+    echo "CROSS COMPILE= $CROSS_COMPILE"
+    
     make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE mrproper
     echo "--- KERNEL mrproper DONE ---"
     echo "-------------------"
@@ -63,7 +71,7 @@ fi
 echo "---------------"
 echo "--- ROOT FS ---"
 echo "Adding the Image in outdir"
-cp "${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image" "${OUTDIR}/Image"
+sudo cp "${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image" "${OUTDIR}/Image"
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
 if [ -d "${OUTDIR}/rootfs" ]
@@ -203,7 +211,7 @@ gzip -f "$OUTDIR/rootfs/initramfs.cpio"
 
 echo "---CPIO COMPRESSION DONE"
 
-cp "${OUTDIR}/rootfs/initramfs.cpio.gz" "${OUTDIR}/initramfs.cpio.gz"
+sudo cp "${OUTDIR}/rootfs/initramfs.cpio.gz" "${OUTDIR}/initramfs.cpio.gz"
 
 echo "----------------------------"
 echo "--- MANUAL_LINUX.SH DONE ---"
